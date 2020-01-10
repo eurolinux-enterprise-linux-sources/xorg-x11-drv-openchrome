@@ -72,6 +72,7 @@ static struct ViaCardIdStruct ViaCardId[] = {
     {"Biostar P4M800-M7",                     VIA_KM400,   0x1565, 0x1202, VIA_DEVICE_CRT},
     {"Uniwill 755CI",                         VIA_KM400,   0x1584, 0x800A, VIA_DEVICE_CRT | VIA_DEVICE_LCD | VIA_DEVICE_TV}, /* aka "Gericom Hummer Advance", "Maxdata M-Book 1200X" */
     {"Packard Bell Quasar2 (MSI MS6786)",     VIA_KM400,   0x1631, 0xD002, VIA_DEVICE_CRT},
+    {"Nec Powermate VL5",                     VIA_KM400,   0x1631, 0xD003, VIA_DEVICE_CRT},
     {"Epox EP-8KMM3I",                        VIA_KM400,   0x1695, 0x9023, VIA_DEVICE_CRT},
     {"ASRock Inc. K7VM2/3/4",                 VIA_KM400,   0x1849, 0x7205, VIA_DEVICE_CRT},
     {"ACorp KM400QP",                         VIA_KM400,   0x1915, 0x1100, VIA_DEVICE_CRT | VIA_DEVICE_TV},
@@ -204,6 +205,7 @@ static struct ViaCardIdStruct ViaCardId[] = {
     {"Neo Endura 540SLe",                     VIA_P4M900,  0x1558, 0x5408, VIA_DEVICE_CRT | VIA_DEVICE_LCD},
     {"Clevo M54xSR",                          VIA_P4M900,  0x1558, 0x5409, VIA_DEVICE_CRT | VIA_DEVICE_LCD},
     {"Biostar P4M900M-M7 SE",                 VIA_P4M900,  0x1565, 0x1207, VIA_DEVICE_CRT},
+    {"Biostar Viotech 3100+",                 VIA_P4M900,  0x1565, 0x1209, VIA_DEVICE_CRT},
     {"Fujitsu/Siemens Amilo Pro V3515",       VIA_P4M900,  0x1734, 0x10CB, VIA_DEVICE_CRT | VIA_DEVICE_LCD},
     {"Fujitsu/Siemens Amilo Li1705",          VIA_P4M900,  0x1734, 0x10F7, VIA_DEVICE_CRT | VIA_DEVICE_LCD},
     {"ASRock P4VM900-SATA2",                  VIA_P4M900,  0x1849, 0x3371, VIA_DEVICE_CRT},
@@ -243,6 +245,7 @@ static struct ViaCardIdStruct ViaCardId[] = {
     {"Fujitsu Futro S100",                    VIA_VX800,   0xA0A0, 0x0702, VIA_DEVICE_CRT},
 
     /*** VX855 ***/
+    {"Dell Optiplex FX130",                   VIA_VX855,   0x1028, 0x0509, VIA_DEVICE_CRT},
     {"VIA VT8562C",                           VIA_VX855,   0x1106, 0x5122, VIA_DEVICE_CRT},
     {"OLPC XO 1.5",                           VIA_VX855,   0x152D, 0x0833, VIA_DEVICE_LCD},
 
@@ -250,7 +253,9 @@ static struct ViaCardIdStruct ViaCardId[] = {
     {"Simmtronics SIMM-PC VX900i",            VIA_VX900,   0x1019, 0x3126, VIA_DEVICE_CRT},
     {"Foxconn L740",                          VIA_VX900,   0x105B, 0x0CFD, VIA_DEVICE_LCD | VIA_DEVICE_CRT},
     {"HP T5550 Thin Client",                  VIA_VX900,   0x1106, 0x7122, VIA_DEVICE_CRT},
+    {"Biostar Viotech 3200+",                 VIA_VX900,   0x1565, 0x120A, VIA_DEVICE_CRT},
     {"ASRock PV530",                          VIA_VX900,   0x1849, 0x7122, VIA_DEVICE_CRT},
+    {"Fujitsu Futro A300",                    VIA_VX900,   0xA0A0, 0x080F, VIA_DEVICE_CRT},
 
     /* keep this */
     {NULL,                                    VIA_UNKNOWN, 0x0000, 0x0000, VIA_DEVICE_NONE}
@@ -267,14 +272,14 @@ ViaDoubleCheckCLE266Revision(ScrnInfoPtr pScrn)
     hwp->writeCrtc(hwp, 0x4F, 0x55);
     if (hwp->readCrtc(hwp, 0x4F) == 0x55) {
         if (CLE266_REV_IS_AX(pVia->ChipRev))
-	        xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "CLE266 Revision seems"
-		                " to be Cx, yet %d was detected previously.\n",
-                        pVia->ChipRev);
+            xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "CLE266 Revision seems"
+                       " to be Cx, yet %d was detected previously.\n",
+                       pVia->ChipRev);
     } else {
         if (CLE266_REV_IS_CX(pVia->ChipRev))
-	        xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "CLE266 Revision seems"
-		                " to be Ax, yet %d was detected previously.\n",
-                        pVia->ChipRev);
+            xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "CLE266 Revision seems"
+                       " to be Ax, yet %d was detected previously.\n",
+                       pVia->ChipRev);
     }
     hwp->writeCrtc(hwp, 0x4F, tmp);
 }
@@ -295,15 +300,17 @@ ViaCheckCardId(ScrnInfoPtr pScrn)
             (Id->Vendor == SUBVENDOR_ID(pVia->PciInfo)) &&
             (Id->Device == SUBSYS_ID(pVia->PciInfo))) {
             xf86DrvMsg(pScrn->scrnIndex, X_PROBED, "Detected %s. Card-Ids (%4X|%4X)\n", Id->String, SUBVENDOR_ID(pVia->PciInfo), SUBSYS_ID(pVia->PciInfo));
+            pVia->ActiveDevice = Id->Outputs;
             pVia->Id = Id;
             return;
-	    }
+        }
     }
 
     xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-	       "Unknown Card-Ids (%4X|%4X|%4X), Chipset: %s; please report to openchrome-users@openchrome.org\n",
+               "Unknown Card-Ids (%4X|%4X|%4X), Chipset: %s; please report to openchrome-users@lists.freedesktop.org\n",
                DEVICE_ID(pVia->PciInfo), SUBVENDOR_ID(pVia->PciInfo), SUBSYS_ID(pVia->PciInfo), pScrn->chipset);
     pVia->Id = NULL;
 
-    ViaDoubleCheckCLE266Revision(pScrn);
+    if (pVia->Chipset == VIA_CLE266)
+        ViaDoubleCheckCLE266Revision(pScrn);
 }

@@ -47,7 +47,7 @@
 #endif
 #include "xf86Crtc.h"
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 #include "dri.h"
 #endif
 
@@ -67,10 +67,10 @@ static const ViaDRMVersion drmCompat = { 3, 1, 0 };
 /* Prototypes. */
 static void VIAIdentify(int flags);
 
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
 static Bool via_pci_probe(DriverPtr drv, int entity_num,
                           struct pci_device *dev, intptr_t match_data);
-#else /* !XSERVER_LIBPCIACCESS */
+#else /* !HAVE_PCIACCESS */
 static Bool VIAProbe(DriverPtr drv, int flags);
 #endif
 
@@ -79,7 +79,7 @@ static Bool VIAPreInit(ScrnInfoPtr pScrn, int flags);
 static Bool VIAScreenInit(SCREEN_INIT_ARGS_DECL);
 static const OptionInfoRec *VIAAvailableOptions(int chipid, int busid);
 
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
 
 #define VIA_DEVICE_MATCH(d,i) \
     { 0x1106, (d), PCI_MATCH_ANY, PCI_MATCH_ANY, 0, 0, (i) }
@@ -100,13 +100,13 @@ static const struct pci_id_match via_device_match[] = {
     { 0, 0, 0 },
 };
 
-#endif /* XSERVER_LIBPCIACCESS */
+#endif /* HAVE_PCIACCESS */
 
 _X_EXPORT DriverRec VIA = {
     VIA_VERSION,
     DRIVER_NAME,
     VIAIdentify,
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
     NULL,
 #else
     VIAProbe,
@@ -115,7 +115,7 @@ _X_EXPORT DriverRec VIA = {
     NULL,
     0,
     NULL,
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
     via_device_match,
     via_pci_probe
 #endif
@@ -262,7 +262,7 @@ VIASetup(pointer module, pointer opts, int *errmaj, int *errmin)
     if (!setupDone) {
         setupDone = TRUE;
         xf86AddDriver(&VIA, module,
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
                      HaveDriverFuncs
 #else
                      0
@@ -341,7 +341,7 @@ VIAEnterVT_internal(ScrnInfoPtr pScrn, int flags)
         if (!pVia->IsSecondary)
             viaRestoreVideo(pScrn);
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
         if (pVia->directRenderingType == DRI_1) {
             kickVblank(pScrn);
             VIADRIRingBufferInit(pScrn);
@@ -370,7 +370,7 @@ VIALeaveVT(VT_FUNC_ARGS_DECL)
 
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO, "VIALeaveVT\n"));
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     if (pVia->directRenderingType == DRI_1) {
         volatile drm_via_sarea_t *saPriv = (drm_via_sarea_t *) DRIGetSAREAPrivate(pScrn->pScreen);
 
@@ -418,18 +418,19 @@ VIAFreeRec(ScrnInfoPtr pScrn)
 
     VIABIOSInfoPtr pBIOSInfo = pVia->pBIOSInfo;
 
-    if (pBIOSInfo)
+    if (pBIOSInfo) {
+        if (pBIOSInfo->TVI2CDev)
+            xf86DestroyI2CDevRec(pBIOSInfo->TVI2CDev, TRUE);
+
+        pVia->pBIOSInfo = NULL;
         free(pBIOSInfo);
+    }
 
     if (VIAPTR(pScrn)->pVbe)
         vbeFree(VIAPTR(pScrn)->pVbe);
 
     if (pVia->VideoRegs)
         free(pVia->VideoRegs);
-
-    if (((VIARec *) (pScrn->driverPrivate))->pBIOSInfo->TVI2CDev)
-        xf86DestroyI2CDevRec((((VIARec *) (pScrn->driverPrivate))->pBIOSInfo->TVI2CDev), TRUE);
-    free(((VIARec *) (pScrn->driverPrivate))->pBIOSInfo);
 
     VIAUnmapMem(pScrn);
 
@@ -465,7 +466,7 @@ VIAIdentify(int flags)
                       VIAChipsets);
 }
 
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
 static Bool
 via_pci_probe(DriverPtr driver, int entity_num,
               struct pci_device *device, intptr_t match_data)
@@ -502,7 +503,7 @@ via_pci_probe(DriverPtr driver, int entity_num,
     }
     return scrn != NULL;
 }
-#else /* !XSERVER_LIBPCIACCESS */
+#else /* !HAVE_PCIACCESS */
 static Bool
 VIAProbe(DriverPtr drv, int flags)
 {
@@ -611,7 +612,7 @@ VIAProbe(DriverPtr drv, int flags)
     return foundScreen;
 
 } /* VIAProbe */
-#endif /* !XSERVER_LIBPCIACCESS */
+#endif /* !HAVE_PCIACCESS */
 
 static int
 LookupChipSet(PciChipsets *pset, int chipSet)
@@ -649,7 +650,7 @@ VIASetupDefaultOptions(ScrnInfoPtr pScrn)
 
     pVia->shadowFB = FALSE;
     pVia->NoAccel = FALSE;
-    pVia->noComposite = TRUE;
+    pVia->noComposite = FALSE;
     pVia->useEXA = TRUE;
     pVia->exaScratchSize = VIA_SCRATCH_SIZE / 1024;
     pVia->drmmode.hwcursor = TRUE;
@@ -683,8 +684,8 @@ VIASetupDefaultOptions(ScrnInfoPtr pScrn)
 
     switch (pVia->Chipset) {
         case VIA_CLE266:
-            pVia->UseLegacyModeSwitch = TRUE;
             pBIOSInfo->TVDIPort = VIA_DI_PORT_DVP0;
+            pVia->UseLegacyModeSwitch = TRUE;
             break;
         case VIA_KM400:
             /* IRQ is not broken on KM400A, but testing (pVia->ChipRev < 0x80)
@@ -726,7 +727,6 @@ VIASetupDefaultOptions(ScrnInfoPtr pScrn)
             pVia->dmaXV = FALSE;
             pBIOSInfo->TVDIPort = VIA_DI_PORT_DVP0;
             break;
-
         case VIA_VX800:
         case VIA_VX855:
         case VIA_VX900:
@@ -772,65 +772,77 @@ VIAGetRec(ScrnInfoPtr pScrn)
     return ret;
 } /* VIAGetRec */
 
+static int
+map_legacy_formats(int bpp, int depth)
+{
+	int fmt = DRM_FORMAT_XRGB8888;
+
+	switch (bpp) {
+	case 8:
+		fmt = DRM_FORMAT_C8;
+		break;
+	case 16:
+		if (depth == 15)
+			fmt = DRM_FORMAT_XRGB1555;
+		else
+			fmt = DRM_FORMAT_RGB565;
+		break;
+	case 24:
+		fmt = DRM_FORMAT_RGB888;
+		break;
+	case 32:
+		if (depth == 24)
+			fmt = DRM_FORMAT_XRGB8888;
+		else if (depth == 30)
+			fmt = DRM_FORMAT_XRGB2101010;
+	default:
+		break;
+	}
+	return fmt;
+}
+
 static Bool
 via_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
 {
     xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(scrn);
-    drmmode_crtc_private_ptr drmmode_crtc = xf86_config->crtc[0]->driver_private;
-    drmmode_ptr drmmode = drmmode_crtc->drmmode;
-    int old_width, old_height, old_dwidth, pitch;
-    int cpp = (scrn->bitsPerPixel + 7) >> 3;
-    struct buffer_object *old_front = NULL;
+    struct buffer_object *old_front = NULL, *new_front = NULL;
+    int old_width, old_height, old_dwidth, format;
+    int cpp = (scrn->bitsPerPixel + 7) >> 3, i;
     ScreenPtr screen = scrn->pScreen;
     VIAPtr pVia = VIAPTR(scrn);
     void *new_pixels = NULL;
     uint32_t old_fb_id;
+    Bool ret = FALSE;
     PixmapPtr ppix;
 
     if (scrn->virtualX == width && scrn->virtualY == height)
         return TRUE;
 
-    xf86DrvMsg(scrn->scrnIndex, X_INFO,
-                "Allocate new frame buffer %dx%d stride\n",
-                width, height);
-
-    old_width = scrn->virtualX;
-    old_height = scrn->virtualY;
-    old_dwidth = scrn->displayWidth;
-    old_fb_id = drmmode->fb_id;
-    old_front = drmmode->front_bo;
-
-    pitch = width * cpp;
-    drmmode->front_bo = drm_bo_alloc_surface(scrn, &pitch, height, 0,
+    format = map_legacy_formats(scrn->bitsPerPixel, scrn->depth);
+    new_front = drm_bo_alloc_surface(scrn, width, height, format,
                                             16, TTM_PL_FLAG_VRAM);
-    if (!drmmode->front_bo)
+    if (!new_front)
         goto fail;
 
-    if (pVia->KMS) {
-        if (drmModeAddFB(drmmode->fd, width, height, scrn->depth,
-                        scrn->bitsPerPixel, pitch,
-                        drmmode->front_bo->handle,
-                        &drmmode->fb_id))
-            goto fail;
-    }
+    xf86DrvMsg(scrn->scrnIndex, X_INFO,
+                "Allocate new frame buffer %dx%d stride %d\n",
+                width, height, new_front->pitch);
 
-    new_pixels = drm_bo_map(scrn, drmmode->front_bo);
+    new_pixels = drm_bo_map(scrn, new_front);
     if (!new_pixels)
         goto fail;
 
     if (pVia->shadowFB) {
-        new_pixels = malloc(height * pitch);
+        new_pixels = malloc(height * new_front->pitch);
         if (!new_pixels)
             goto fail;
         free(pVia->ShadowPtr);
         pVia->ShadowPtr = new_pixels;
     }
-    scrn->virtualX = width;
-    scrn->virtualY = height;
-    scrn->displayWidth = pitch / cpp;
 
     ppix = screen->GetScreenPixmap(screen);
-    if (!screen->ModifyPixmapHeader(ppix, width, height, -1, -1, pitch,
+    if (!screen->ModifyPixmapHeader(ppix, width, height, -1, -1,
+                                    new_front->pitch,
                                     new_pixels))
         goto fail;
 
@@ -838,23 +850,59 @@ via_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
     scrn->pixmapPrivate.ptr = ppix->devPrivate.ptr;
 #endif
 
-    if (xf86SetDesiredModes(scrn)) {
-        if (old_front) {
-            if (old_fb_id && pVia->KMS)
+    scrn->virtualX = width;
+    scrn->virtualY = height;
+    scrn->displayWidth = new_front->pitch / cpp;
+
+    for (i = 0; i < xf86_config->num_crtc; i++) {
+        xf86CrtcPtr crtc = xf86_config->crtc[i];
+        drmmode_crtc_private_ptr drmmode_crtc;
+        drmmode_ptr drmmode;
+
+        if (!crtc->enabled || !crtc->driver_private)
+            continue;
+
+        drmmode_crtc = crtc->driver_private;
+        drmmode = drmmode_crtc->drmmode;
+
+        old_front = drmmode->front_bo;
+        old_fb_id = drmmode->fb_id;
+
+        drmmode->front_bo = new_front;
+        drmmode->fb_id = 0;
+
+        ret = xf86CrtcSetMode(crtc, &crtc->mode, crtc->rotation,
+	                          crtc->x, crtc->y);
+        if (!ret) {
+            xf86DrvMsg(scrn->scrnIndex, X_INFO,
+                "SetMode !ret so we reset front_bo\n");
+            drmmode->front_bo = old_front;
+            drmmode->fb_id = old_fb_id;
+            break;
+#ifdef HAVE_DRI
+        } else {
+            xf86DrvMsg(scrn->scrnIndex, X_INFO,
+                "SetMode ret so we cleanup old front_bo\n");
+            if (pVia->KMS && old_fb_id)
                 drmModeRmFB(drmmode->fd, old_fb_id);
-            drm_bo_unmap(scrn, old_front);
-            drm_bo_free(scrn, old_front);
+#endif
         }
-        return TRUE;
+    }
+
+
+    if (ret) {
+        xf86DrvMsg(scrn->scrnIndex, X_INFO,
+                   "More cleanup old front_bo\n");
+        drm_bo_unmap(scrn, old_front);
+        drm_bo_free(scrn, old_front);
+        return ret;
     }
 
 fail:
-    if (drmmode->front_bo) {
-        drm_bo_unmap(scrn, drmmode->front_bo);
-        drm_bo_free(scrn, drmmode->front_bo);
+    if (new_front) {
+        drm_bo_unmap(scrn, new_front);
+        drm_bo_free(scrn, new_front);
     }
-    drmmode->front_bo = old_front;
-    drmmode->fb_id = old_fb_id;
     scrn->virtualY = old_height;
     scrn->virtualX = old_width;
     scrn->displayWidth = old_dwidth;
@@ -875,7 +923,7 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
     VIABIOSInfoPtr pBIOSInfo;
     MessageType from = X_DEFAULT;
     char *s = NULL;
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     char *busId = NULL;
     drmVersionPtr drmVer;
 #endif
@@ -895,7 +943,7 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
     pVia = VIAPTR(pScrn);
     pVia->IsSecondary = FALSE;
     pEnt = xf86GetEntityInfo(pScrn->entityList[0]);
-#ifndef XSERVER_LIBPCIACCESS
+#ifndef HAVE_PCIACCESS
     if (pEnt->resources) {
         free(pEnt);
         VIAFreeRec(pScrn);
@@ -944,7 +992,7 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
     }
 
     pVia->PciInfo = xf86GetPciInfoForEntity(pEnt->index);
-#ifndef XSERVER_LIBPCIACCESS
+#ifndef HAVE_PCIACCESS
     xf86RegisterResources(pEnt->index, NULL, ResNone);
 #endif
     if (pEnt->device->chipset && *pEnt->device->chipset) {
@@ -974,7 +1022,7 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
                    pVia->ChipRev);
     } else {
         /* Read PCI bus 0, dev 0, function 0, index 0xF6 to get chip revision */
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
         struct pci_device *bridge = pci_device_get_parent_bridge(pVia->PciInfo);
         uint8_t rev = 0;
 
@@ -989,7 +1037,7 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
 
     pVia->directRenderingType = DRI_NONE;
     pVia->KMS = FALSE;
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     busId = DRICreatePCIBusID(pVia->PciInfo);
     pVia->drmmode.fd = drmOpen("via", busId);
     if (pVia->drmmode.fd != -1) {
@@ -1538,8 +1586,10 @@ VIAPreInit(ScrnInfoPtr pScrn, int flags)
         }
     }
 
-    if (!xf86InitialConfiguration(pScrn, TRUE))
+    if (!xf86InitialConfiguration(pScrn, TRUE)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Initial configuration failed\n");
         return FALSE;
+    }
 
     if (!pScrn->modes) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "No valid modes found\n");
@@ -1676,6 +1726,9 @@ VIACreateScreenResources(ScreenPtr pScreen)
 
     rootPixmap = pScreen->GetScreenPixmap(pScreen);
 
+#ifdef HAVE_DRI
+    drmmode_uevent_init(pScrn, &pVia->drmmode);
+#endif
     surface = drm_bo_map(pScrn, pVia->drmmode.front_bo);
     if (!surface)
         return FALSE;
@@ -1722,6 +1775,9 @@ VIACloseScreen(CLOSE_SCREEN_ARGS_DECL)
     if (pScrn->vtSema)
         VIALeaveVT(VT_FUNC_ARGS(0));
 
+#ifdef HAVE_DRI
+    drmmode_uevent_fini(pScrn, &pVia->drmmode);
+#endif
     xf86_cursors_fini(pScreen);
 
     for (i = 0; i < xf86_config->num_crtc; i++) {
@@ -1733,17 +1789,19 @@ VIACloseScreen(CLOSE_SCREEN_ARGS_DECL)
     }
 
     if (pVia->drmmode.front_bo) {
+#ifdef HAVE_DRI
         if (pVia->KMS && pVia->drmmode.fb_id)
             drmModeRmFB(pVia->drmmode.fd, pVia->drmmode.fb_id);
+#endif
         pVia->drmmode.fb_id = 0;
 
         drm_bo_free(pScrn, pVia->drmmode.front_bo);
     }
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     if (pVia->directRenderingType == DRI_1)
         VIADRICloseScreen(pScreen);
-#endif
+
     if (pVia->KMS) {
         drmmode_uevent_fini(pScrn, &pVia->drmmode);
 
@@ -1752,6 +1810,7 @@ VIACloseScreen(CLOSE_SCREEN_ARGS_DECL)
                         "drmDropMaster failed: %s\n",
                         strerror(errno));
     }
+#endif
 
     pScrn->vtSema = FALSE;
     pScreen->CloseScreen = pVia->CloseScreen;
@@ -1763,12 +1822,13 @@ VIAScreenInit(SCREEN_INIT_ARGS_DECL)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     VIAPtr pVia = VIAPTR(pScrn);
-    int pitch;
+    int format;
 
     pScrn->pScreen = pScreen;
     pScrn->displayWidth = pScrn->virtualX;
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO, "VIAScreenInit\n"));
 
+#ifdef HAVE_DRI
     if (pVia->KMS) {
         if (drmSetMaster(pVia->drmmode.fd)) {
             xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
@@ -1777,7 +1837,6 @@ VIAScreenInit(SCREEN_INIT_ARGS_DECL)
         }
     }
 
-#ifdef XF86DRI
     if (pVia->drmmode.fd != -1) {
         if (pVia->directRenderingType == DRI_1) {
             /* DRI2 or DRI1 support */
@@ -1792,9 +1851,9 @@ VIAScreenInit(SCREEN_INIT_ARGS_DECL)
     if (!drm_bo_manager_init(pScrn))
         return FALSE;
 
-    pitch = pScrn->virtualX * pScrn->bitsPerPixel >> 3;
-    pVia->drmmode.front_bo = drm_bo_alloc_surface(pScrn, &pitch, pScrn->virtualY,
-                                                    0, 16, TTM_PL_FLAG_VRAM);
+    format = map_legacy_formats(pScrn->bitsPerPixel, pScrn->depth);
+    pVia->drmmode.front_bo = drm_bo_alloc_surface(pScrn, pScrn->virtualX, pScrn->virtualY,
+                                                    format, 16, TTM_PL_FLAG_VRAM);
     if (!pVia->drmmode.front_bo)
         return FALSE;
 
@@ -1864,7 +1923,6 @@ VIAScreenInit(SCREEN_INIT_ARGS_DECL)
     if (!pVia->NoAccel && !viaInitExa(pScreen))
         return FALSE;
 
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
 #if 0
     xf86SetSilkenMouse(pScreen);
@@ -1939,7 +1997,7 @@ VIAScreenInit(SCREEN_INIT_ARGS_DECL)
         return FALSE;
 
     if (pVia->directRenderingType != DRI_2) {
-#ifdef XF86DRI
+#ifdef HAVE_DRI
         if (pVia->directRenderingType == DRI_1) {
             if (!VIADRIFinishScreenInit(pScreen)) {
                 xf86DrvMsg(pScrn->scrnIndex, X_INFO, "direct rendering disabled\n");

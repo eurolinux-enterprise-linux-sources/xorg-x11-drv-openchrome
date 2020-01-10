@@ -177,6 +177,7 @@ typedef struct _VIABIOSINFO {
     void (*TVPower) (ScrnInfoPtr pScrn, Bool On);
     void (*LCDPower) (ScrnInfoPtr pScrn, Bool On);
     DisplayModePtr TVModes;
+    int            TVNumModes;
     void (*TVPrintRegs) (ScrnInfoPtr pScrn);
 
 } VIABIOSInfoRec, *VIABIOSInfoPtr;
@@ -221,9 +222,9 @@ void ViaSetUseExternalClock(vgaHWPtr hwp);
 /* via_display.c */
 Bool UMSCrtcInit(ScrnInfoPtr pScrn);
 void ViaCRTCInit(ScrnInfoPtr pScrn);
-void ViaFirstCRTCSetStartingAddress(ScrnInfoPtr pSCrn, int x, int y);
+void ViaFirstCRTCSetStartingAddress(xf86CrtcPtr crtc, int x, int y);
 void ViaFirstCRTCSetMode(ScrnInfoPtr pScrn, DisplayModePtr mode);
-void ViaSecondCRTCSetStartingAddress(ScrnInfoPtr pScrn, int x, int y);
+void ViaSecondCRTCSetStartingAddress(xf86CrtcPtr crtc, int x, int y);
 void ViaSecondCRTCHorizontalOffset(ScrnInfoPtr pScrn);
 void ViaSecondCRTCHorizontalQWCount(ScrnInfoPtr pScrn, int width);
 void ViaSecondCRTCSetMode(ScrnInfoPtr pScrn, DisplayModePtr mode);

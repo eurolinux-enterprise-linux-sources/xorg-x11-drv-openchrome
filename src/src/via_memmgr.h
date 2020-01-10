@@ -22,6 +22,8 @@
  */
 #ifndef _VIA_MEMMGR_H_
 #define _VIA_MEMMGR_H_
+
+#include <sys/mman.h>
 #include "xf86.h"
 
 #define TTM_PL_FLAG_SYSTEM	1
@@ -42,7 +44,7 @@ struct buffer_object {
 Bool drm_bo_manager_init(ScrnInfoPtr pScrn);
 
 struct buffer_object *
-drm_bo_alloc_surface(ScrnInfoPtr pScrn, unsigned int *pitch, unsigned int height,
+drm_bo_alloc_surface(ScrnInfoPtr pScrn, unsigned int width, unsigned int height,
                     int format, unsigned int alignment, int domain);
 struct buffer_object *
 drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment,

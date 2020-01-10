@@ -395,7 +395,7 @@ ViaFirstCRTCSetMode(ScrnInfoPtr pScrn, DisplayModePtr mode)
     hwp->writeCrtc(hwp, 0x18, 0xFF);
     ViaCrtcMask(hwp, 0x07, 0x10, 0x10);
     ViaCrtcMask(hwp, 0x09, 0x40, 0x40);
-    ViaCrtcMask(hwp, 0x33, 0x07, 0x06);
+    ViaCrtcMask(hwp, 0x33, 0x06, 0x07);
     ViaCrtcMask(hwp, 0x35, 0x10, 0x10);
 
     /* zero Maximum scan line */
@@ -470,8 +470,11 @@ ViaFirstCRTCSetMode(ScrnInfoPtr pScrn, DisplayModePtr mode)
 }
 
 void
-ViaFirstCRTCSetStartingAddress(ScrnInfoPtr pScrn, int x, int y)
+ViaFirstCRTCSetStartingAddress(xf86CrtcPtr crtc, int x, int y)
 {
+    drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
+    drmmode_ptr drmmode = drmmode_crtc->drmmode;
+    ScrnInfoPtr pScrn = crtc->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
     vgaHWPtr hwp = VGAHWPTR(pScrn);
     CARD32 Base;
@@ -479,7 +482,7 @@ ViaFirstCRTCSetStartingAddress(ScrnInfoPtr pScrn, int x, int y)
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO, "ViaFirstCRTCSetStartingAddress\n"));
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
-    Base = (Base + pVia->drmmode.front_bo->offset) >> 1;
+    Base = (Base + drmmode->front_bo->offset) >> 1;
 
     hwp->writeCrtc(hwp, 0x0C, (Base & 0xFF00) >> 8);
     hwp->writeCrtc(hwp, 0x0D, Base & 0xFF);
@@ -491,14 +494,16 @@ ViaFirstCRTCSetStartingAddress(ScrnInfoPtr pScrn, int x, int y)
 }
 
 void
-ViaSecondCRTCSetStartingAddress(ScrnInfoPtr pScrn, int x, int y)
+ViaSecondCRTCSetStartingAddress(xf86CrtcPtr crtc, int x, int y)
 {
-    VIAPtr pVia = VIAPTR(pScrn);
+    drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
+    drmmode_ptr drmmode = drmmode_crtc->drmmode;
+    ScrnInfoPtr pScrn = crtc->scrn;
     vgaHWPtr hwp = VGAHWPTR(pScrn);
     CARD32 Base, tmp;
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
-    Base = (Base + pVia->drmmode.front_bo->offset) >> 3;
+    Base = (Base + drmmode->front_bo->offset) >> 3;
 
     tmp = hwp->readCrtc(hwp, 0x62) & 0x01;
     tmp |= (Base & 0x7F) << 1;
@@ -908,16 +913,26 @@ iga1_crtc_mode_fixup(xf86CrtcPtr crtc, DisplayModePtr mode,
     ScrnInfoPtr pScrn = crtc->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
     CARD32 temp;
+    ModeStatus modestatus;
 
     if (pVia->pVbe)
         return TRUE;
 
     if ((mode->Clock < pScrn->clockRanges->minClock) ||
-        (mode->Clock > pScrn->clockRanges->maxClock))
+        (mode->Clock > pScrn->clockRanges->maxClock)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                   "Clock for mode \"%s\" outside of allowed range (%u (%u - %u))\n",
+                   mode->name, mode->Clock, pScrn->clockRanges->minClock,
+                   pScrn->clockRanges->maxClock);
         return FALSE;
+    }
 
-    if (ViaFirstCRTCModeValid(pScrn, mode) != MODE_OK)
+    modestatus = ViaFirstCRTCModeValid(pScrn, mode);
+    if (modestatus != MODE_OK) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Not using mode \"%s\" : %s.\n",
+                   mode->name, xf86ModeStatusToString(modestatus));
         return FALSE;
+    }
 
     temp = mode->CrtcHDisplay * mode->CrtcVDisplay * mode->VRefresh *
             (pScrn->bitsPerPixel >> 3);
@@ -944,7 +959,7 @@ iga1_crtc_set_origin(xf86CrtcPtr crtc, int x, int y)
     if (pVia->pVbe) {
         ViaVbeAdjustFrame(pScrn, x, y);
     } else {
-        ViaFirstCRTCSetStartingAddress(pScrn, x, y);
+        ViaFirstCRTCSetStartingAddress(crtc, x, y);
     }
     VIAVidAdjustFrame(pScrn, x, y);
 }
@@ -956,8 +971,6 @@ iga1_crtc_mode_set(xf86CrtcPtr crtc, DisplayModePtr mode,
 {
     ScrnInfoPtr pScrn = crtc->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
-
-    pVia->OverlaySupported = FALSE;
 
     if (!pVia->pVbe) {
         if (!vgaHWInit(pScrn, adjusted_mode))
@@ -978,7 +991,7 @@ iga1_crtc_mode_set(xf86CrtcPtr crtc, DisplayModePtr mode,
         if (!ViaVbeSetMode(pScrn, adjusted_mode))
             return;
     }
-    iga1_crtc_set_origin(crtc, 0, 0);
+    iga1_crtc_set_origin(crtc, crtc->x, crtc->y);
 }
 
 static void
@@ -1227,7 +1240,9 @@ static const xf86CrtcFuncsRec iga1_crtc_funcs = {
     .show_cursor            = iga1_crtc_show_cursor,
     .hide_cursor            = iga1_crtc_hide_cursor,
     .load_cursor_argb       = iga_crtc_load_cursor_argb,
+#ifdef RANDR_12_INTERFACE
     .set_origin             = iga1_crtc_set_origin,
+#endif
     .destroy                = iga_crtc_destroy,
 };
 
@@ -1309,16 +1324,26 @@ iga2_crtc_mode_fixup(xf86CrtcPtr crtc, DisplayModePtr mode,
     ScrnInfoPtr pScrn = crtc->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
     CARD32 temp;
+    ModeStatus modestatus;
 
     if (pVia->pVbe)
         return TRUE;
 
     if ((mode->Clock < pScrn->clockRanges->minClock) ||
-        (mode->Clock > pScrn->clockRanges->maxClock))
+        (mode->Clock > pScrn->clockRanges->maxClock)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                   "Clock for mode \"%s\" outside of allowed range (%u (%u - %u))\n",
+                   mode->name, mode->Clock, pScrn->clockRanges->minClock,
+                   pScrn->clockRanges->maxClock);
         return FALSE;
+    }
 
-    if (ViaSecondCRTCModeValid(pScrn, mode) != MODE_OK)
+    modestatus = ViaFirstCRTCModeValid(pScrn, mode);
+    if (modestatus != MODE_OK) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Not using mode \"%s\" : %s.\n",
+                   mode->name, xf86ModeStatusToString(modestatus));
         return FALSE;
+    }
 
     temp = mode->CrtcHDisplay * mode->CrtcVDisplay * mode->VRefresh *
             (pScrn->bitsPerPixel >> 3);
@@ -1345,7 +1370,7 @@ iga2_crtc_set_origin(xf86CrtcPtr crtc, int x, int y)
     if (pVia->pVbe) {
         ViaVbeAdjustFrame(pScrn, x, y);
     } else {
-        ViaSecondCRTCSetStartingAddress(pScrn, x, y);
+        ViaSecondCRTCSetStartingAddress(crtc, x, y);
     }
     VIAVidAdjustFrame(pScrn, x, y);
 }
@@ -1356,8 +1381,6 @@ iga2_crtc_mode_set(xf86CrtcPtr crtc, DisplayModePtr mode,
 {
     ScrnInfoPtr pScrn = crtc->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
-
-    pVia->OverlaySupported = FALSE;
 
     if (pVia->pVbe) {
         if (!ViaVbeSetMode(pScrn, adjusted_mode))
@@ -1379,7 +1402,7 @@ iga2_crtc_mode_set(xf86CrtcPtr crtc, DisplayModePtr mode,
                 ViaDisplayDisableSimultaneous(pScrn);
         }
     }
-    iga2_crtc_set_origin(crtc, 0, 0);
+    iga2_crtc_set_origin(crtc, crtc->x, crtc->y);
 }
 
 static void
@@ -1634,7 +1657,9 @@ static const xf86CrtcFuncsRec iga2_crtc_funcs = {
     .show_cursor            = iga2_crtc_show_cursor,
     .hide_cursor            = iga2_crtc_hide_cursor,
     .load_cursor_argb       = iga_crtc_load_cursor_argb,
+#ifdef RANDR_12_INTERFACE
     .set_origin             = iga2_crtc_set_origin,
+#endif
     .destroy                = iga_crtc_destroy,
 };
 

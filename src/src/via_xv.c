@@ -357,8 +357,7 @@ DecideOverlaySupport(xf86CrtcPtr crtc)
                 memEfficiency = (float)SINGLE_3205_133;
                 break;
             default:
-                /*Unknow DRAM Type */
-                DBG_DD(ErrorF("Unknow DRAM Type!\n"));
+                ErrorF("Unknow DRAM Type!\n");
                 mClock = 166;
                 memEfficiency = (float)SINGLE_3205_133;
                 break;
@@ -367,6 +366,11 @@ DecideOverlaySupport(xf86CrtcPtr crtc)
         width = mode->HDisplay;
         height = mode->VDisplay;
         refresh = mode->VRefresh;
+
+        if (refresh==0) {
+            refresh=60;
+            ErrorF("Unable to fetch vertical refresh value, needed for bandwidth calculation.\n");
+        }
 
         /*
          * Approximative, VERY conservative formula in some cases.
@@ -388,10 +392,10 @@ DecideOverlaySupport(xf86CrtcPtr crtc)
             DBG_DD(ErrorF(" via_xv.c : mClk= %f : \n", mClock));
             DBG_DD(ErrorF(" via_xv.c : memEfficiency= %f : \n",
                 memEfficiency));
-            DBG_DD(ErrorF(" via_xv.c : needBandwidth= %f : \n",
-                needBandWidth));
-            DBG_DD(ErrorF(" via_xv.c : totalBandwidth= %f : \n",
-                totalBandWidth));
+            ErrorF(" via_xv.c : needBandwidth= %f : \n",
+                needBandWidth);
+            ErrorF(" via_xv.c : totalBandwidth= %f : \n",
+                totalBandWidth);
             if (needBandWidth < totalBandWidth)
                 return TRUE;
         }
@@ -550,7 +554,7 @@ viaExitVideo(ScrnInfoPtr pScrn)
 
     DBG_DD(ErrorF(" via_xv.c : viaExitVideo : \n"));
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     ViaCleanupXVMC(pScrn, viaAdaptPtr, XV_ADAPT_NUM);
 #endif
 
@@ -600,7 +604,7 @@ viaInitVideo(ScreenPtr pScreen)
     num_new = 0;
 
     pVia->useDmaBlit = FALSE;
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     pVia->useDmaBlit = (pVia->directRenderingType == DRI_1) &&
     ((pVia->Chipset == VIA_CLE266) ||
         (pVia->Chipset == VIA_KM400) ||
@@ -658,7 +662,7 @@ viaInitVideo(ScreenPtr pScreen)
 
     if (num_adaptors) {
         xf86XVScreenInit(pScreen, allAdaptors, num_adaptors);
-#ifdef XF86DRI
+#ifdef HAVE_DRI
         ViaInitXVMC(pScreen);
 #endif
         viaSetColorSpace(pVia, 0, 0, 0, 0, TRUE);
@@ -753,7 +757,7 @@ viaSetupAdaptors(ScreenPtr pScreen, XF86VideoAdaptorPtr ** adaptors)
         }
         usedPorts += j;
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
         viaXvMCInitXv(pScrn, viaAdaptPtr[i]);
 #endif
 
@@ -1002,7 +1006,7 @@ nv12cp(unsigned char *dst, const unsigned char *src, int dstPitch,
             src + srcVOffset, w >> 1, w >>1, dstPitch, h >> 1);
 }
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 
 static int
 viaDmaBlitImage(VIAPtr pVia,
@@ -1223,7 +1227,7 @@ viaPutImage(ScrnInfoPtr pScrn,
                 dstPitch = pVia->swov.SWDevice.dwPitch;
 
                 if (pVia->useDmaBlit) {
-#ifdef XF86DRI
+#ifdef HAVE_DRI
                     if (viaDmaBlitImage(pVia, pPriv, buf,
                         (CARD32) pVia->swov.SWDevice.dwSWPhysicalAddr[pVia->dwFrameNum & 1],
                         width, height, dstPitch, id)) {
@@ -1274,8 +1278,7 @@ viaPutImage(ScrnInfoPtr pScrn,
             }
 
             /* If there is bandwidth issue, block the H/W overlay */
-            if (!pVia->OverlaySupported &&
-                    !(pVia->OverlaySupported = DecideOverlaySupport(crtc))) {
+            if (!(DecideOverlaySupport(crtc))) {
                 DBG_DD(ErrorF
                         (" via_xv.c : Xv Overlay rejected due to insufficient "
                                 "memory bandwidth.\n"));
@@ -1432,7 +1435,7 @@ viaQueryImageAttributes(ScrnInfoPtr pScrn,
             break;
         case FOURCC_XVMC:
             *h = (*h + 1) & ~1;
-#ifdef XF86DRI
+#ifdef HAVE_DRI
             size = viaXvMCPutImageSize(pScrn);
 #else
             size = 0;

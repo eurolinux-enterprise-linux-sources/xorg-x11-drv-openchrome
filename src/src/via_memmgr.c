@@ -30,12 +30,12 @@
 #include "xf86_OSproc.h"
 #include "xf86fbman.h"
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 #include "xf86drm.h"
 #endif
 
 #include "via_driver.h"
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 #include "via_drm.h"
 #endif
 
@@ -68,15 +68,36 @@ viaOffScreenLinear(struct buffer_object *obj, ScrnInfoPtr pScrn,
 }
 
 struct buffer_object *
-drm_bo_alloc_surface(ScrnInfoPtr pScrn, unsigned int *pitch, unsigned int height,
+drm_bo_alloc_surface(ScrnInfoPtr pScrn, unsigned int width, unsigned int height,
                     int format, unsigned int alignment, int domain)
 {
     struct buffer_object *obj = NULL;
+    int pitch;
 
-    *pitch = ALIGN_TO(*pitch, alignment);
-    obj = drm_bo_alloc(pScrn, *pitch * height, alignment, domain);
-    if (obj)
-        obj->pitch = *pitch;
+    switch (format) {
+    case DRM_FORMAT_C8:
+        pitch = width;
+        break;
+
+    case DRM_FORMAT_XRGB1555:
+    case DRM_FORMAT_RGB565:
+        pitch = width * 2;
+        break;
+
+    case DRM_FORMAT_RGB888:
+        pitch = width * 3;
+        break;
+
+    case DRM_FORMAT_XRGB2101010:
+    case DRM_FORMAT_XRGB8888:
+        pitch = width * 4;
+        break;
+    }
+
+    pitch = ALIGN_TO(pitch, alignment);
+    obj = drm_bo_alloc(pScrn, pitch * height, alignment, domain);
+    if (!obj->pitch)
+        obj->pitch = pitch;
     return obj;
 }
 
@@ -98,7 +119,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                     ret = -ENOMEM;
                 } else
                     DEBUG(ErrorF("%lu bytes of Linear memory allocated at %lx, handle %lu\n", obj->size, obj->offset, obj->handle));
-#ifdef XF86DRI
+#ifdef HAVE_DRI
             } else if (pVia->directRenderingType == DRI_1) {
                 drm_via_mem_t drm;
 
@@ -119,7 +140,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                                 obj->size, obj->offset, obj->handle));
                 }
             } else if (pVia->directRenderingType == DRI_2) {
-                struct drm_gem_create args;
+                struct drm_via_gem_create args;
 
                 /* Some day this will be moved to libdrm. */
                 args.domains = domain;
@@ -127,7 +148,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                 args.pitch = 0;
                 args.size = size;
                 ret = drmCommandWriteRead(pVia->drmmode.fd, DRM_VIA_GEM_CREATE,
-                                        &args, sizeof(struct drm_gem_create));
+                                        &args, sizeof(struct drm_via_gem_create));
                 if (!ret) {
                     /* Okay the X server expects to know the offset because
                      * of non-KMS. Once we have KMS working the offset
@@ -135,6 +156,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                     obj->map_offset = args.map_handle;
                     obj->offset = args.offset;
                     obj->handle = args.handle;
+                    obj->pitch = args.pitch;
                     obj->size = args.size;
                     obj->domain = domain;
                     DEBUG(ErrorF("%lu bytes of DRI2 memory allocated at %lx, handle %lu\n",
@@ -173,9 +195,11 @@ drm_bo_map(ScrnInfoPtr pScrn, struct buffer_object *obj)
         }
     } else {
         switch (obj->domain) {
+#ifdef HAVE_DRI
         case TTM_PL_FLAG_TT:
             obj->ptr = (pVia->agpMappedAddr + obj->offset);
             break;
+#endif
         case TTM_PL_FLAG_VRAM:
             obj->ptr = (pVia->FBBase + obj->offset);
             break;
@@ -211,7 +235,7 @@ drm_bo_free(ScrnInfoPtr pScrn, struct buffer_object *obj)
                 FBLinearPtr linear = (FBLinearPtr) obj->handle;
 
                 xf86FreeOffscreenLinear(linear);
-#ifdef XF86DRI
+#ifdef HAVE_DRI
             } else if (pVia->directRenderingType == DRI_1) {
                 drm_via_mem_t drm;
 
@@ -245,7 +269,7 @@ drm_bo_manager_init(ScrnInfoPtr pScrn)
     if (pVia->directRenderingType == DRI_2)
         return ret;
     ret = ums_create(pScrn);
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     if (pVia->directRenderingType == DRI_1)
         ret = VIADRIKernelInit(pScrn);
 #endif

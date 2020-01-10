@@ -26,6 +26,7 @@
 #ifndef _VIA_DRIVER_H_
 #define _VIA_DRIVER_H_ 1
 
+//#define VIA_DEBUG_COMPOSITE 1
 #define HAVE_DEBUG 1
 
 #ifdef HAVE_DEBUG
@@ -50,16 +51,17 @@
 #include "fourcc.h"
 #include "fb.h"
 
-#include "xf86dri.h"
 #include "xf86Crtc.h"
 #include "xf86RandR12.h"
 #include "xf86cmap.h"
 #include "vbe.h"
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 #define _XF86DRI_SERVER_
+#include "xf86dri.h"
 #include "sarea.h"
 #include "dri.h"
+#include "drm_fourcc.h"
 #include "GL/glxint.h"
 #include "via_dri.h"
 #include "via_drmclient.h"
@@ -77,8 +79,10 @@
 #include "via_xv_overlay.h"
 #include "via_eng_regs.h"
 
-#ifdef XSERVER_LIBPCIACCESS
+#ifdef HAVE_PCIACCESS
 #include <pciaccess.h>
+#else
+#include "xf86PciInfo.h"
 #endif
 #include <errno.h>
 
@@ -158,7 +162,7 @@ enum dri_type {
 	DRI_2
 };
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 
 #define VIA_XVMC_MAX_BUFFERS 2
 #define VIA_XVMC_MAX_CONTEXTS 4
@@ -254,8 +258,10 @@ typedef struct _VIA {
 
 	CreateScreenResourcesProcPtr CreateScreenResources;
     CloseScreenProcPtr  CloseScreen;
+#ifdef HAVE_PCIACCESS
     struct pci_device  *PciInfo;
-#ifndef XSERVER_LIBPCIACCESS
+#else
+    pciVideoPtr         PciInfo;
     PCITAG PciTag;
 #endif
     int                 Chipset;
@@ -300,8 +306,8 @@ typedef struct _VIA {
     int                 exaScratchSize;
     char *              scratchAddr;
     Bool                noComposite;
-#ifdef XF86DRI
     struct buffer_object *scratchBuffer;
+#ifdef HAVE_DRI
     struct buffer_object *texAGPBuffer;
     char *              dBounce;
 #endif
@@ -325,7 +331,7 @@ typedef struct _VIA {
 
     drmmode_rec         drmmode;
     enum dri_type       directRenderingType;
-#ifdef XF86DRI
+#ifdef HAVE_DRI
     Bool                XvMCEnabled;
     DRIInfoPtr          pDRIInfo;
     int                 numVisualConfigs;
@@ -358,7 +364,6 @@ typedef struct _VIA {
     CARD32              VideoStatus;
     VIAHWDiff           HWDiff;
     unsigned long       dwV1, dwV3;
-    unsigned long       OverlaySupported;
     unsigned long       dwFrameNum;
 
     CARD32*             VidRegBuffer; /* Temporary buffer for video overlay registers. */
@@ -422,7 +427,7 @@ void viaAccelTextureBlit(ScrnInfoPtr, unsigned long, unsigned, unsigned,
 			 unsigned, unsigned, int);
 #ifdef VIA_DEBUG_COMPOSITE
 void viaExaCompositePictDesc(PicturePtr pict, char *string, int n);
-void viaExaPrintComposite(CARD8 op, PicturePtr pSrc, PicturePtr pMask,
+void viaExaPrintCompositeInfo(char *info, CARD8 op, PicturePtr pSrc, PicturePtr pMask,
                             PicturePtr pDst);
 #endif
 
@@ -489,7 +494,7 @@ extern vidCopyFunc viaVidCopyInit( char *copyType, ScreenPtr pScreen );
 
 /* In via_xwmc.c */
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 /* Basic init and exit functions */
 void ViaInitXVMC(ScreenPtr pScreen);
 void ViaCleanupXVMC(ScrnInfoPtr pScrn, XF86VideoAdaptorPtr *XvAdaptors, int XvAdaptorCount);
@@ -502,7 +507,7 @@ unsigned long viaXvMCPutImageSize(ScrnInfoPtr pScrn);
 /* via_i2c.c */
 void ViaI2CInit(ScrnInfoPtr pScrn);
 
-#ifdef XF86DRI
+#ifdef HAVE_DRI
 Bool VIADRI1ScreenInit(ScreenPtr pScreen);
 void VIADRICloseScreen(ScreenPtr pScreen);
 Bool VIADRIFinishScreenInit(ScreenPtr pScreen);
@@ -512,6 +517,6 @@ void viaDRIOffscreenRestore(ScrnInfoPtr pScrn);
 void viaDRIOffscreenSave(ScrnInfoPtr pScrn);
 Bool VIADRIBufferInit(ScrnInfoPtr pScrn);
 
-#endif /* XF86DRI */
+#endif /* HAVE_DRI */
 
 #endif /* _VIA_DRIVER_H_ */

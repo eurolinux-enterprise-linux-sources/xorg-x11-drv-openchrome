@@ -29,9 +29,9 @@ SUBDIRS = xvmc
 BUILT_SOURCES = version.h
 EXTRA_DIST = version.h
 CONFIG_CLEAN_FILES= version.h
-AM_CFLAGS = @XORG_CFLAGS@ @DRI_CFLAGS@
+AM_CFLAGS = @XORG_CFLAGS@ @LIBUDEV_CFLAGS@ @DRI_CFLAGS@
 openchrome_drv_la_LTLIBRARIES = openchrome_drv.la
-openchrome_drv_la_LDFLAGS = -module -avoid-version
+openchrome_drv_la_LDFLAGS = -module -avoid-version @LIBUDEV_LIBS@
 openchrome_drv_ladir = @moduledir@/drivers
 
 openchrome_drv_la_SOURCES = \
@@ -65,8 +65,6 @@ openchrome_drv_la_SOURCES = \
          via_xv_overlay.c \
          via_xv_overlay.h \
          via_ums.c \
-         via_kms.h \
-         via_kms.c \
          via_vbe.c \
          via_vgahw.c \
          via_vgahw.h \
@@ -82,23 +80,28 @@ openchrome_drv_la_SOURCES += \
          via_dri.h \
          via_drm.h \
          via_drmclient.h \
+         via_kms.h \
+         via_kms.c \
          via_xvmc.c \
-         via_xvmc.h 
+         via_xvmc.h \
+         drm_fourcc.h
 else
 EXTRA_DIST += \
          via_dri.c \
          via_dri.h \
          via_drm.h \
          via_drmclient.h \
+         via_kms.h \
+         via_kms.c \
          via_xvmc.c \
-         via_xvmc.h 
+         via_xvmc.h \
+         drm_fourcc.h
 endif
-
 
 via_driver.lo: version.h
 version.h: $(openchrome_drv_la_SOURCES)
 	@if [ -d ../.git ]; then \
-        echo '#define BUILDCOMMENT "(developement build, branch' \
+        echo '#define BUILDCOMMENT "(development build, branch' \
                      "`git branch -v | sed 's/no branch/no_branch/' | \
                       awk '/^\*/ { print $$2 }'`" \
                      'at revision' \
@@ -106,7 +109,7 @@ version.h: $(openchrome_drv_la_SOURCES)
                     > $@.tmp; \
     else \
         if [ -d .svn ]; then \
-	        echo '#define BUILDCOMMENT "(developement build, at revision '\
+	        echo '#define BUILDCOMMENT "(development build, at revision '\
 	                "`svnversion -nc .. | sed -e s/^[^:]*://`"')"' > $@.tmp; \
         else \
 	        date +'#define BUILDCOMMENT "(development build, compiled on %c)"' \

@@ -298,6 +298,7 @@ via_lvds_create_resources(xf86OutputPtr output)
 {
 }
 
+#ifdef RANDR_12_INTERFACE
 static Bool
 via_lvds_set_property(xf86OutputPtr output, Atom property,
 						RRPropertyValuePtr value)
@@ -310,6 +311,7 @@ via_lvds_get_property(xf86OutputPtr output, Atom property)
 {
     return FALSE;
 }
+#endif
 
 static void
 ViaLCDPowerSequence(vgaHWPtr hwp, VIALCDPowerSeqRec Sequence)
@@ -1293,11 +1295,20 @@ ViaPanelLookUpModeIndex(int width, int height)
 static xf86OutputStatus
 via_lvds_detect(xf86OutputPtr output)
 {
+    static const char xoId[] = "OLPC XO 1.5";
     xf86OutputStatus status = XF86OutputStatusDisconnected;
     ViaPanelInfoPtr panel = output->driver_private;
     ScrnInfoPtr pScrn = output->scrn;
     VIAPtr pVia = VIAPTR(pScrn);
     vgaHWPtr hwp = VGAHWPTR(pScrn);
+
+    /* Hardcode panel size for the XO */
+    if(strcmp(pVia->Id->String, xoId) == 0) {
+        panel->NativeWidth = 1200;
+        panel->NativeHeight = 900;
+        status = XF86OutputStatusConnected;
+        return status;
+    }
 
     if (!pVia->UseLegacyModeSwitch) {
         /* First try to get the mode from EDID. */
@@ -1435,8 +1446,10 @@ via_lvds_destroy(xf86OutputPtr output)
 
 static const xf86OutputFuncsRec via_lvds_funcs = {
     .create_resources   = via_lvds_create_resources,
+#ifdef RANDR_12_INTERFACE
     .set_property       = via_lvds_set_property,
     .get_property       = via_lvds_get_property,
+#endif
     .dpms               = via_lvds_dpms,
     .save               = via_lvds_save,
     .restore            = via_lvds_restore,

@@ -1,52 +1,55 @@
 %define tarball xf86-video-openchrome
 %define moduledir %(pkg-config xorg-server --variable=moduledir )
-%define driverdir	%{moduledir}/drivers
-%define gitdate 20120806
+%define driverdir %{moduledir}/drivers
+%define gitdate 
+%define gitversion 131175a71
 
 %if 0%{?gitdate}
-%define gver .%{gitdate}git
+%define gver .%{gitdate}git%{gitversion}
 %endif
 
 %define with_xvmc 1
 %define with_debug 0
 
-Summary:	Xorg X11 openchrome video driver
-Name:		xorg-x11-drv-openchrome
-Version:	0.3.0
-Release:	3%{?gver}%{?dist}
-URL:		http://www.openchrome.org
-License:	MIT
-Group:		User Interface/X Hardware Support
-BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+Summary:        Xorg X11 openchrome video driver
+Name:           xorg-x11-drv-openchrome
+Version:        0.3.3
+Release:        6%{?gver}%{?dist}
+URL:            http://www.openchrome.org
+License:        MIT
+Group:          User Interface/X Hardware Support
 
 %if 0%{?gitdate}
-Source0:	%{tarball}-%{gitdate}.tar.bz2
+Source0:        %{tarball}-%{gitdate}.tar.bz2
 %else
-Source0:	http://www.openchrome.org/releases/%{tarball}-%{version}.tar.bz2
+Source0:        http://xorg.freedesktop.org/archive/individual/driver/%{tarball}-%{version}.tar.bz2
 %endif
-Source1:	openchrome.xinf
 
-# Patches from upstream trunk :
+# Upstream patches :
+
 # Fedora specific patches :
-#Patch100:       openchrome-0.2.903-disable_hwcursor.patch
+
 # Experimental patches (branch backport, etc...): 
+Patch13:        openchrome-0.2.904-fix_tvout_flickering.patch
 
-ExclusiveArch:	%{ix86} x86_64
+ExclusiveArch:  %{ix86} x86_64
 
+%if 0%{?gitdate}
 BuildRequires:  autoconf automake libtool
-BuildRequires:	xorg-x11-server-devel >= 1.10
-BuildRequires:	libX11-devel
-BuildRequires:	libXext-devel
-BuildRequires:	mesa-libGL-devel
-%if %{with_xvmc}
-BuildRequires:	libXvMC-devel
 %endif
-BuildRequires:	libdrm-devel >= 2.0-1
-Requires:	Xorg %(xserver-sdk-abi-requires ansic)
-Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
+BuildRequires:  xorg-x11-server-devel
+BuildRequires:  libX11-devel
+BuildRequires:  libXext-devel
+BuildRequires:  mesa-libGL-devel
+%if %{with_xvmc}
+BuildRequires:  libXvMC-devel
+%endif
+BuildRequires:  libdrm-devel >= 2.0-1
+Requires:       Xorg %(xserver-sdk-abi-requires ansic)
+Requires:       Xorg %(xserver-sdk-abi-requires videodrv)
 
-Obsoletes:  xorg-x11-drv-via <= 0.2.2-4
-Provides:   xorg-x11-drv-via = 0.2.2-5
+Obsoletes:      xorg-x11-drv-via <= 0.2.2-4
+Provides:       xorg-x11-drv-via = 0.2.2-5
 
 
 %description 
@@ -55,11 +58,11 @@ X.Org X11 openchrome video driver.
 
 %if %{with_xvmc}
 %package devel
-Summary:	Xorg X11 openchrome video driver XvMC development package
-Group:		Development/System
-Requires:	%{name} = %{version}-%{release}
-Obsoletes:	xorg-x11-drv-via-devel <= 0.2.2-4
-Provides:	xorg-x11-drv-via-devel = 0.2.2-5
+Summary:        Xorg X11 openchrome video driver XvMC development package
+Group:          Development/System
+Requires:       %{name} = %{version}-%{release}
+Obsoletes:      xorg-x11-drv-via-devel <= 0.2.2-4
+Provides:       xorg-x11-drv-via-devel = 0.2.2-5
 
 %description devel
 X.Org X11 openchrome video driver XvMC development package.
@@ -69,10 +72,10 @@ X.Org X11 openchrome video driver XvMC development package.
 %prep
 %setup -q -n %{tarball}-%{?gitdate:%{gitdate}}%{?!gitdate:%{version}}
 
+
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
-autoreconf -iv
-%configure --disable-static --enable-dri \
+%{?gitdate:autoreconf -v --install}
+%configure --disable-static --enable-viaregtool \
 %if %{with_debug}
            --enable-debug --enable-xv-debug
 %endif
@@ -86,7 +89,6 @@ rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/hwdata/videoaliases
-install -m 0644 %{SOURCE1} $RPM_BUILD_ROOT%{_datadir}/hwdata/videoaliases/openchrome.xinf
 
 # FIXME: Remove all libtool archives (*.la) from modules directory.  This
 # should be fixed in upstream Makefile.am or whatever.
@@ -107,7 +109,6 @@ fi
 %defattr(-,root,root,-)
 %doc COPYING NEWS README
 %{driverdir}/openchrome_drv.so
-%{_datadir}/hwdata/videoaliases/openchrome.xinf
 %if %{with_xvmc}
 %{_libdir}/libchromeXvMC.so.1
 %{_libdir}/libchromeXvMC.so.1.0.0
@@ -115,6 +116,7 @@ fi
 %{_libdir}/libchromeXvMCPro.so.1.0.0
 %endif
 %{_mandir}/man4/openchrome.4.gz
+%{_sbindir}/via_regs_dump
 
 %if %{with_xvmc}
 %files devel
@@ -125,20 +127,147 @@ fi
 
 
 %changelog
-* Tue Aug 29 2012 Jerome Glisse <jglisse@redhat.com> 0.3.0-3
-- Resolves: #835247
+* Wed Jan 15 2014 Adam Jackson <ajax@redhat.com> - 0.3.3-6
+- 1.15 ABI rebuild
 
-* Wed Aug 22 2012 airlied@redhat.com - 0.3.0-2.20120806git
-- rebuild for server ABI requires
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 0.3.3-5
+- Mass rebuild 2013-12-27
 
-* Mon Aug 06 2012 Jerome Glisse <jglisse@redhat.com> 0.3.0-1
+* Wed Nov 06 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-4
+- 1.15RC1 ABI rebuild
+
+* Fri Oct 25 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-3
+- ABI rebuild
+
+* Sun Aug 04 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Thu May 23 2013 Xavier Bachelot <xavier@bachelot.org> - 0.3.3-1
+- Update to 0.3.3 (CVE-2013-1994).
+
+* Wed Mar 27 2013 Xavier Bachelot <xavier@bachelot.org> - 0.3.2-1
+- Update to 0.3.2.
+- Remove old --enable-dri configure switch.
+- Change Source0 URL to fd.o.
+
+* Thu Mar 07 2013 Peter Hutterer <peter.hutterer@redhat.com> - 0.3.1-5
+- ABI rebuild
+
+* Fri Feb 15 2013 Peter Hutterer <peter.hutterer@redhat.com> - 0.3.1-4
+- ABI rebuild
+
+* Fri Feb 15 2013 Peter Hutterer <peter.hutterer@redhat.com> - 0.3.1-3
+- ABI rebuild
+
+* Thu Jan 10 2013 Adam Jackson <ajax@redhat.com> - 0.3.1-2
+- ABI rebuild
+
+* Tue Sep 04 2012 Xavier Bachelot <xavier@bachelot.org> - 0.3.1-1
+- Update to 0.3.1.
+
+* Sun Aug 05 2012 Xavier Bachelot <xavier@bachelot.org> - 0.3.0-2
+- Update to latest snapshot to fix a crash in I2C code with Xserver 1.13.
+
+* Fri Jul 20 2012 Xavier Bachelot <xavier@bachelot.org> - 0.3.0-1
+- Update to 0.3.0.
+- Install registers dumper tool.
+
+* Fri Jul 20 2012 Dave Airlie <airlied@redhat.com> 0.2.906-2
 - temporary git snapshot, to fix deps after X server rebuild
 
-* Mon Jul 25 2011 Adam Jackson <ajax@redhat.com> 0.2.904-4
-- Build with -fno-strict-aliasing
+* Wed May 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.906-1
+- Update to 0.2.906.
 
-* Tue Jun 28 2011 Ben Skeggs <bskeggs@redhat.com> 0.2.904-2
-- rebuild for 6.2 server rebase
+* Thu May 03 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-6
+- Fix I420 Xv surface.
+
+* Mon Mar 26 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-5
+- Make EXA work out of the box.
+
+* Fri Mar 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-4
+- Make EXA the default (but disable compositing) (RHBZ#804194).
+- Xv support for VX900.
+
+* Sat Feb 11 2012 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.905-3
+- ABI rebuild
+
+* Fri Feb 10 2012 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.905-2
+- ABI rebuild
+
+* Fri Feb 10 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-1
+- Update to 0.2.905.
+
+* Tue Jan 24 2012 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.904-21
+- ABI rebuild
+
+* Wed Jan 04 2012 Peter Hutterer <peter.hutterer@redhat.com> 0.2.904-20
+- Really drop .xinf
+
+* Wed Jan 04 2012 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.904-19
+- Rebuild for server 1.12
+
+* Wed Nov 16 2011 Adam Jackson <ajax@redhat.com> 0.2.904-18
+- ABI rebuild
+- openchrome-0.2.904-vga.patch: Adapt to videoabi 12
+
+* Sun Sep 11 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-16
+- Update to svn933 for bugfixes.
+
+* Thu Aug 18 2011 Adam Jackson <ajax@redhat.com> - 0.2.904-15
+- Rebuild for xserver 1.11 ABI
+
+* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-14
+- Bump release.
+
+* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-13
+- Update to svn921 for XO 1.5 regression and Xv crash fix (RHBZ #697901).
+- Update I420 patch (RHBZ #674551).
+
+* Thu Mar 03 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-12
+- Update to svn916 for VX900 support and bug fixes.
+
+* Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.2.904-11
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Thu Dec 02 2010 Adam Jackson <ajax@redhat.com> 0.2.904-10
+- Rebuild for new ABI
+
+* Wed Oct 27 2010 Adam Jackson <ajax@redhat.com> 0.2.904-9
+- Add ABI requires magic (#542742)
+
+* Mon Jul 05 2010 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.904-8
+- rebuild for X Server 1.9
+
+* Thu Jun 10 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-7
+- Add upstream fix for a regression with DRI on 64 bits.
+- Clean up spec indentation.
+
+* Sat May 08 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-6
+- Sync with trunk (r853) and drop patches accordingly.
+- Add Xv acceleration for I420 on CME engine.
+
+* Sat Apr 03 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-5.1
+- Workaround broken libdrm 2.4.19 Cflags.
+
+* Wed Mar 31 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-5
+- Sanitize SaveVideoRegister function.
+- Fix an Xv regression on CME chipsets introduced by the VX855 Xv patch.
+
+* Mon Mar 22 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-4
+- Fix an Xv regression on VX800 introduced by the VX855 Xv patch.
+
+* Thu Mar 18 2010 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-3
+- Sync with trunk (r841) for assorted tweaks and fixes.
+- Add VX855 Xv support.
+- Fix colorkey on VX8xx.
+- Disable DMA and AGP by default on VX8xx.
+- Fix TV out flickering regression.
+- Add I2CDevices option (needed for XO-1.5).
+- Improve PCI 2D performances path.
+- Add a guard against HQV engine hang.
+
+* Thu Jan 21 2010 Peter Hutterer <peter.hutterer@redhat.com> - 0.2.904-2
+- Rebuild for server 1.8
 
 * Tue Oct 13 2009 Adam Jackson <ajax@redhat.com> 0.2.904-1
 - openchrome 0.2.904

@@ -97,6 +97,16 @@ struct io_reg graphic_regs = {
 	},
 };
 
+
+static struct bit_desc crtc_32_desc[] = {
+	{ 0x01, "Real-Time Flipping", },
+	{ 0x02, "Digital Video Port (DVP) Grammar Correction", },
+	{ 0x04, "Display End Blanking Enable", },
+	{ 0x08, "CRT SYNC Driving Selection (0: Low, 1: High)", },
+	{ 0xE0, "HSYNC Delay Number by VCLK", },
+	{ 0 },
+};
+
 struct io_reg crtc_regs = {
 	.io_port_addr = 0x3d4,
 	.io_port_data = 0x3d5,
@@ -131,9 +141,9 @@ struct io_reg crtc_regs = {
 		/* CRT Controller Extended Register */
 		[0x30] = { "Display Fetch Blocking Control", },
 		[0x31] = { "Half Line Position", },
-		[0x32] = { "Mode Control", },
+		[0x32] = { "Mode Control", crtc_32_desc, },
 		[0x33] = { "Hsync Adjuster", },
-		[0x34] = { "Starting Address Overflow", },
+		[0x34] = { "Starting Address Overflow, Bits [23:16]", },
 		[0x35] = { "Extended Overflow", },
 		[0x36] = { "Power Management Control 3", },
 		[0x37] = { "DAC Control", },
@@ -175,8 +185,8 @@ struct io_reg crtc_regs = {
 		[0x64] = { "Second Display Starting Address High", },
 		[0x65] = { "Second Display Horizontal Quadword Count", },
 		[0x66] = { "Second Display Horizontal Offset", },
-		[0x67] = { "Second Display Col Depth and Horiz Overfl", },
-		[0x68] = { "Second Display Queue Depth and Read Thresh", },
+		[0x67] = { "Second Display Color Depth and Horizontal Overflow", },
+		[0x68] = { "Second Display Queue Depth and Read Threshold", },
 		[0x69] = { "Second Display Interrupt Enable and Status", },
 		[0x6a] = { "Second Display Channel and LCD Enable", },
 		[0x6b] = { "Channel 1 and 2 Clock Mode Selection", },
@@ -192,7 +202,7 @@ struct io_reg crtc_regs = {
 		[0x75] = { "Vertical Retrace Start Shadow", },
 		[0x76] = { "Vertical Retrace End Shadow", },
 		[0x77] = { "LCD Horizontal Scaling Factor", },
-		[0x78] = { "LCD Vertical Scaling Facor", },
+		[0x78] = { "LCD Vertical Scaling Factor", },
 		[0x79] = { "LCD Scaling Control", },
 		[0x7a] = { "LCD Scaling Parameter 1", },
 		[0x7b] = { "LCD Scaling Parameter 2", },
@@ -216,7 +226,7 @@ struct io_reg crtc_regs = {
 		[0x8e] = { "LCD Power Sequence Control 3", },
 		[0x8f] = { "LCD Power Sequence Control 4", },
 		[0x90] = { "LCD Power Sequence Control 5", },
-		[0x91] = { "Software Cotnrol Power Sequence", },
+		[0x91] = { "Software Control Power Sequence", },
 		[0x92] = { "Read Threshold 2", },
 		[0x94] = { "Expire Number and Display Queue Extend", },
 		[0x95] = { "Extend Threshold Bit", },
@@ -239,8 +249,8 @@ struct io_reg crtc_regs = {
 		[0xa8] = { "Expected IGA1 Vertical Display End", },
 		[0xa9] = { "Hardware Gamma Control", },
 		[0xaa] = { "FIFO Depth + Threshold Overflow", },
-		[0xab] = { "IGA2 Inetrlace Half Line", },
-		[0xac] = { "IGA2 Inetrlace Half Line", },
+		[0xab] = { "IGA2 Interlace Half Line", },
+		[0xac] = { "IGA2 Interlace Half Line", },
 		[0xaf] = { "P-Arbiter Write Expired Number", },
 		[0xb0] = { "IGA2 Pack Circuit Request Threshold", },
 		[0xb1] = { "IGA2 Pack Circuit Request High Threshold", },
@@ -318,6 +328,16 @@ static struct bit_desc seq_19_desc[] = {
 	{ 0 },
 };
 
+
+static struct bit_desc seq_1a_desc[] = {
+	{ 0x01, "LUT Shadow Access", },
+	{ 0x04, "PCI Burst Write Wait State Select (0: 0 Wait state, 1: 1 Wait state)", },
+	{ 0x08, "Extended Mode Memory Access Enable (0: Disable, 1: Enable)", },
+	{ 0x40, "Software Reset (0: Default value, 1: Reset)", },
+	{ 0x80, "Read Cache Enable (0: Disable, 1: Enable)", },
+	{ 0 },
+};
+
 static struct bit_desc seq_1b_desc[] = {
 	{ 0x01, "Primary Display's LUT Off", },
 	{ 0x18, "Primary Display Engine VCK Gating", },
@@ -337,7 +357,7 @@ static struct bit_desc seq_1e_desc[] = {
 static struct bit_desc seq_2a_desc[] = {
 	{ 0x03, "LVDS Channel 1 Pad Control" },
 	{ 0x0c, "LVDS Channel 2 Pad Control" },
-	{ 0x40, "Sprad Spectrum Type FIFO" },
+	{ 0x40, "Spread Spectrum Type FIFO" },
 	{ 0 },
 };
 
@@ -354,7 +374,7 @@ static struct bit_desc seq_2b_desc[] = {
 static struct bit_desc seq_2d_desc[] = {
 	{ 0x03, "ECK Pll Power Control", },
 	{ 0x0c, "LCK PLL Power Control", },
-	{ 0x30, "VCK PLL Powre Control", },
+	{ 0x30, "VCK PLL Power Control", },
 	{ 0xc0, "E3_ECK_N Selection", },
 	{ 0 },
 };
@@ -400,7 +420,7 @@ static struct bit_desc seq_43_desc[] = {
 	{ 0x04, "Typical Channel 1 Arbiter Read Back Data Overwrite Flag", },
 	{ 0x08, "Typical Channel 0 Arbiter Read Back Data Overwrite Flag", },
 	{ 0x10, "IGA1 Display FIFO Underflow Flag", },
-	{ 0x20, "IGA2 Dispaly FIFO Underflow Flag", },
+	{ 0x20, "IGA2 Display FIFO Underflow Flag", },
 	{ 0x40, "Windows Media Video Enable Flag", },
 	{ 0x80, "Advance Video Enable Flag", },
 	{ 0 },
@@ -424,7 +444,7 @@ static struct bit_desc seq_59_desc[] = {
 	{ 0x04, "GFX-NM GMINT Channel 1 Dynamic Clock Enable", },
 	{ 0x08, "GFX-NM PCIC Dynamic Clock Enable", },
 	{ 0x10, "GFX-NM IGA Dynamic Clock Enable", },
-	{ 0x20, "IGA Low Thrshold Enable", },
+	{ 0x20, "IGA Low Threshold Enable", },
 	{ 0x80, "IGA1 Enable", },
 	{ 0 },
 };
@@ -477,8 +497,8 @@ struct io_reg sequencer_regs = {
 		[0x17] = { "Display FIFO Control", },
 		[0x18] = { "Display Arbiter Control 0", },
 		[0x19] = { "Power Management", seq_19_desc, },
-		[0x1a] = { "PCI Bus Control", },
-		[0x1b] = { "Power Management Control 0", seq_1b_desc,  },
+		[0x1a] = { "PCI Bus Control", seq_1a_desc, },
+		[0x1b] = { "Power Management Control 0", seq_1b_desc, },
 		[0x1c] = { "Horizontal Display Fetch Count Data", },
 		[0x1d] = { "Horizontal Display Fetch Count Control", },
 		[0x1e] = { "Power Management Control", seq_1e_desc, },
@@ -506,14 +526,14 @@ struct io_reg sequencer_regs = {
 		[0x3f] = { "Power Management Control 2", seq_3f_desc, },
 		[0x40] = { "PLL Control", seq_40_desc, },
 		[0x41] = { "Typical Arbiter Control 1", },
-		[0x42] = { "Typical Arbiter Control 1", },
+		[0x42] = { "Typical Arbiter Control 2", },
 		[0x43] = { "Graphics Bonding Option", seq_43_desc, },
-		[0x44] = { "VCK Clock Synthesizer Vallue 0", },
-		[0x45] = { "VCK Clock Synthesizer Vallue 1", },
-		[0x46] = { "VCK Clock Synthesizer Vallue 2", },
-		[0x47] = { "ECK Clock Synthesizer Vallue 0", },
-		[0x48] = { "ECK Clock Synthesizer Vallue 1", },
-		[0x49] = { "ECK Clock Synthesizer Vallue 2", },
+		[0x44] = { "VCK Clock Synthesizer Value 0", },
+		[0x45] = { "VCK Clock Synthesizer Value 1", },
+		[0x46] = { "VCK Clock Synthesizer Value 2", },
+		[0x47] = { "ECK Clock Synthesizer Value 0", },
+		[0x48] = { "ECK Clock Synthesizer Value 1", },
+		[0x49] = { "ECK Clock Synthesizer Value 2", },
 		[0x4a] = { "LDCK Clock Synthesizer Value 0", },
 		[0x4b] = { "LDCK Clock Synthesizer Value 1", },
 		[0x4c] = { "LDCK Clock Synthesizer Value 2", },
@@ -543,14 +563,14 @@ struct io_reg sequencer_regs = {
 		[0x65] = { "Power Management Control 6", },
 		[0x66] = { "GTI Control 0", },
 		[0x67] = { "GTI Control 1", },
-		[0x68] = { "GTI Control 1", },
-		[0x69] = { "GTI Control 1", },
-		[0x6a] = { "GTI Control 1", },
-		[0x6b] = { "GTI Control 1", },
-		[0x6c] = { "GTI Control 1", },
-		[0x6d] = { "GTI Control 1", },
-		[0x6e] = { "GTI Control 1", },
-		[0x6f] = { "GTI Control 1", },
+		[0x68] = { "GTI Control 2", },
+		[0x69] = { "GTI Control 3", },
+		[0x6a] = { "GTI Control 4", },
+		[0x6b] = { "GTI Control 5", },
+		[0x6c] = { "GTI Control 6", },
+		[0x6d] = { "GTI Control 7", },
+		[0x6e] = { "GTI Control 8", },
+		[0x6f] = { "GTI Control 9", },
 		[0x70] = { "GARB Control 0", },
 		[0x71] = { "Typical Arbiter Control 2", },
 		[0x72] = { "Typical Arbiter Control 3", },
@@ -809,7 +829,7 @@ static void dump_registers(struct io_reg *ior)
 {
 	u_int8_t idx;
 
-	printf("%s register dump:\n", ior->name);
+	printf("%s register dump (IO Port address: 0x%03x): \n", ior->name, ior->io_port_addr);
 	for (idx = 0; idx < 0xff; idx++) {
 		u_int8_t val;
 		struct bit_desc *desc = ior->index[idx].bit_desc;
@@ -819,7 +839,7 @@ static void dump_registers(struct io_reg *ior)
 
 		outb(idx, ior->io_port_addr);
 		val = inb(ior->io_port_data);
-		printf("    0x%02x = 0x%02x (%s)\n", idx, val,	
+		printf("   %03x.%02x = 0x%02x (%s)\n", ior->io_port_data, idx, val,	
 			ior->index[idx].name);
 		
 		if (!desc) 
@@ -1110,8 +1130,8 @@ static void usage(void)
 	printf("-d | --dump  : Dump all registers.\n");
 	printf("-p | --pll   : Display PLL.\n");
 	printf("-m | --mode  : Display modes.\n");
-	printf("-r | --read  : Read register.\n");
-	printf("-w | --write : Write register.\n");
+	printf("-r | --read  : Read register. Example : $0 -r 3d5.17\n");
+	printf("-w | --write : Write register. Example : $0 -w 3d5.17 0xa3\n");
 	printf("-g | --gpio  : Display GPIO state.\n");
 }
 
