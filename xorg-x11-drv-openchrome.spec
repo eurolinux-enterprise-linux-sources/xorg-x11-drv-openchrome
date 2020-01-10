@@ -10,7 +10,7 @@
 Summary:	Xorg X11 openchrome video driver
 Name:		xorg-x11-drv-openchrome
 Version:	0.2.904
-Release:	1%{?dist}
+Release:	4%{?dist}
 URL:		http://www.openchrome.org
 License:	MIT
 Group:		User Interface/X Hardware Support
@@ -26,7 +26,7 @@ Source1:	openchrome.xinf
 
 ExclusiveArch:	%{ix86} x86_64
 
-BuildRequires:	xorg-x11-server-devel
+BuildRequires:	xorg-x11-server-devel >= 1.10
 BuildRequires:	libX11-devel
 BuildRequires:	libXext-devel
 BuildRequires:	mesa-libGL-devel
@@ -34,7 +34,8 @@ BuildRequires:	mesa-libGL-devel
 BuildRequires:	libXvMC-devel
 %endif
 BuildRequires:	libdrm-devel >= 2.0-1
-Requires:	xorg-x11-server-Xorg
+Requires:	Xorg %(xserver-sdk-abi-requires ansic)
+Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 
 Obsoletes:  xorg-x11-drv-via <= 0.2.2-4
 Provides:   xorg-x11-drv-via = 0.2.2-5
@@ -62,6 +63,7 @@ X.Org X11 openchrome video driver XvMC development package.
 
 
 %build
+export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
 autoreconf -iv
 %configure --disable-static --enable-dri \
 %if %{with_debug}
@@ -116,6 +118,12 @@ fi
 
 
 %changelog
+* Mon Jul 25 2011 Adam Jackson <ajax@redhat.com> 0.2.904-4
+- Build with -fno-strict-aliasing
+
+* Tue Jun 28 2011 Ben Skeggs <bskeggs@redhat.com> 0.2.904-2
+- rebuild for 6.2 server rebase
+
 * Tue Oct 13 2009 Adam Jackson <ajax@redhat.com> 0.2.904-1
 - openchrome 0.2.904
 
