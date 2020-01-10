@@ -1,22 +1,29 @@
 %define tarball xf86-video-openchrome
 %define moduledir %(pkg-config xorg-server --variable=moduledir )
 %define driverdir	%{moduledir}/drivers
+%define gitdate 20120806
 
-%define cvsdate xxxxxxx
+%if 0%{?gitdate}
+%define gver .%{gitdate}git
+%endif
 
 %define with_xvmc 1
 %define with_debug 0
 
 Summary:	Xorg X11 openchrome video driver
 Name:		xorg-x11-drv-openchrome
-Version:	0.2.904
-Release:	4%{?dist}
+Version:	0.3.0
+Release:	3%{?gver}%{?dist}
 URL:		http://www.openchrome.org
 License:	MIT
 Group:		User Interface/X Hardware Support
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
+%if 0%{?gitdate}
+Source0:	%{tarball}-%{gitdate}.tar.bz2
+%else
 Source0:	http://www.openchrome.org/releases/%{tarball}-%{version}.tar.bz2
+%endif
 Source1:	openchrome.xinf
 
 # Patches from upstream trunk :
@@ -26,6 +33,7 @@ Source1:	openchrome.xinf
 
 ExclusiveArch:	%{ix86} x86_64
 
+BuildRequires:  autoconf automake libtool
 BuildRequires:	xorg-x11-server-devel >= 1.10
 BuildRequires:	libX11-devel
 BuildRequires:	libXext-devel
@@ -59,8 +67,7 @@ X.Org X11 openchrome video driver XvMC development package.
 
 
 %prep
-%setup -q -n %{tarball}-%{version}
-
+%setup -q -n %{tarball}-%{?gitdate:%{gitdate}}%{?!gitdate:%{version}}
 
 %build
 export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
@@ -118,6 +125,15 @@ fi
 
 
 %changelog
+* Tue Aug 29 2012 Jerome Glisse <jglisse@redhat.com> 0.3.0-3
+- Resolves: #835247
+
+* Wed Aug 22 2012 airlied@redhat.com - 0.3.0-2.20120806git
+- rebuild for server ABI requires
+
+* Mon Aug 06 2012 Jerome Glisse <jglisse@redhat.com> 0.3.0-1
+- temporary git snapshot, to fix deps after X server rebuild
+
 * Mon Jul 25 2011 Adam Jackson <ajax@redhat.com> 0.2.904-4
 - Build with -fno-strict-aliasing
 
