@@ -14,7 +14,7 @@
 Summary:        Xorg X11 openchrome video driver
 Name:           xorg-x11-drv-openchrome
 Version:        0.3.3
-Release:        6%{?gver}%{?dist}
+Release:        7%{?gver}%{?dist}
 URL:            http://www.openchrome.org
 License:        MIT
 Group:          User Interface/X Hardware Support
@@ -127,6 +127,9 @@ fi
 
 
 %changelog
+* Wed Nov 11 2015 Adam Jackson <ajax@redhat.com> - 0.3.3-7
+- Rebuild for server 1.17
+
 * Wed Jan 15 2014 Adam Jackson <ajax@redhat.com> - 0.3.3-6
 - 1.15 ABI rebuild
 
