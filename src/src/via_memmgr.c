@@ -34,9 +34,12 @@
 #include "xf86drm.h"
 #endif
 
+#include "drm_fourcc.h"
 #include "via_driver.h"
 #ifdef HAVE_DRI
 #include "via_drm.h"
+#else
+#include "drm_fourcc.h"
 #endif
 
 /*
@@ -140,7 +143,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                                 obj->size, obj->offset, obj->handle));
                 }
             } else if (pVia->directRenderingType == DRI_2) {
-                struct drm_via_gem_create args;
+                struct drm_via_gem_object args;
 
                 /* Some day this will be moved to libdrm. */
                 args.domains = domain;
@@ -148,7 +151,7 @@ drm_bo_alloc(ScrnInfoPtr pScrn, unsigned int size, unsigned int alignment, int d
                 args.pitch = 0;
                 args.size = size;
                 ret = drmCommandWriteRead(pVia->drmmode.fd, DRM_VIA_GEM_CREATE,
-                                        &args, sizeof(struct drm_via_gem_create));
+                                        &args, sizeof(struct drm_via_gem_object));
                 if (!ret) {
                     /* Okay the X server expects to know the offset because
                      * of non-KMS. Once we have KMS working the offset
@@ -216,8 +219,10 @@ drm_bo_unmap(ScrnInfoPtr pScrn, struct buffer_object *obj)
 {
     VIAPtr pVia = VIAPTR(pScrn);
 
-    if (pVia->directRenderingType == DRI_2)
+    if (pVia->directRenderingType == DRI_2) {
         munmap(obj->ptr, obj->size);
+    }
+
     obj->ptr = NULL;
 }
 
@@ -268,7 +273,7 @@ drm_bo_manager_init(ScrnInfoPtr pScrn)
 
     if (pVia->directRenderingType == DRI_2)
         return ret;
-    ret = ums_create(pScrn);
+    ret = umsCreate(pScrn);
 #ifdef HAVE_DRI
     if (pVia->directRenderingType == DRI_1)
         ret = VIADRIKernelInit(pScrn);

@@ -1,7 +1,7 @@
 %define tarball xf86-video-openchrome
 %define moduledir %(pkg-config xorg-server --variable=moduledir )
 %define driverdir %{moduledir}/drivers
-%define gitdate 
+#define gitdate 
 %define gitversion 131175a71
 
 %if 0%{?gitdate}
@@ -11,11 +11,13 @@
 %define with_xvmc 1
 %define with_debug 0
 
+%undefine _hardened_build
+
 Summary:        Xorg X11 openchrome video driver
 Name:           xorg-x11-drv-openchrome
-Version:        0.3.3
-Release:        6%{?gver}%{?dist}
-URL:            http://www.openchrome.org
+Version:        0.5.0
+Release:        3%{?gver}%{?dist}.1
+URL:            http://www.freedesktop.org/wiki/Openchrome/
 License:        MIT
 Group:          User Interface/X Hardware Support
 
@@ -84,8 +86,6 @@ make
 
 
 %install
-rm -rf $RPM_BUILD_ROOT
-
 make install DESTDIR=$RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/hwdata/videoaliases
@@ -95,19 +95,22 @@ mkdir -p $RPM_BUILD_ROOT%{_datadir}/hwdata/videoaliases
 find $RPM_BUILD_ROOT -regex ".*\.la$" | xargs rm -f --
 
 
-%clean
-rm -rf $RPM_BUILD_ROOT
-
-
 %post
+%if %{with_xvmc}
+/sbin/ldconfig
+%endif
 if [ -e /etc/X11/xorg.conf ]; then
     sed -i "/Driver/s/via/openchrome/" /etc/X11/xorg.conf || :
 fi
 
+%if %{with_xvmc}
+%postun -p /sbin/ldconfig
+%endif
+
 
 %files
-%defattr(-,root,root,-)
-%doc COPYING NEWS README
+%doc NEWS README
+%license COPYING
 %{driverdir}/openchrome_drv.so
 %if %{with_xvmc}
 %{_libdir}/libchromeXvMC.so.1
@@ -120,18 +123,67 @@ fi
 
 %if %{with_xvmc}
 %files devel
-%defattr(-,root,root,-)
 %{_libdir}/libchromeXvMC.so
 %{_libdir}/libchromeXvMCPro.so
 %endif
 
 
 %changelog
-* Wed Jan 15 2014 Adam Jackson <ajax@redhat.com> - 0.3.3-6
+* Wed May 30 2018 Adam Jackson <ajax@redhat.com> - 0.5.0-3.1
+- Rebuild for xserver 1.20
+
+* Thu Sep 29 2016 Hans de Goede <hdegoede@redhat.com> - 0.5.0-3
+- Rebuild against xserver-1.19
+
+* Wed Jul 06 2016 Xavier Bachelot <xavier@bachelot.org> - 0.5.0-1
+- Update to 0.5.0.
+
+* Wed Apr 13 2016 Xavier Bachelot <xavier@bachelot.org> - 0.4.0-1
+- Update to 0.4.0.
+- Clean up spec file.
+
+* Fri Feb 05 2016 Fedora Release Engineering <releng@fedoraproject.org> - 0.3.3-18
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Wed Jul 29 2015 Dave Airlie <airlied@redhat.com> - 0.3.3-17
 - 1.15 ABI rebuild
 
-* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 0.3.3-5
-- Mass rebuild 2013-12-27
+* Tue Jun 23 2015 Adam Jackson <ajax@redhat.com> - 0.3.3-16
+- Undefine _hardened_build
+
+* Fri Jun 19 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-15
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
+* Wed Feb 11 2015 Hans de Goede <hdegoede@redhat.com> - 0.3.3-14
+- xserver 1.17 ABI rebuild
+
+* Mon Aug 18 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-13
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+
+* Mon Jun 16 2014 Hans de Goede <hdegoede@redhat.com> - 0.3.3-12
+- xserver 1.15.99.903 ABI rebuild
+
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-11
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Mon Apr 28 2014 Hans de Goede <hdegoede@redhat.com> - 0.3.3-10
+- xserver 1.15.99-20140428 git snapshot ABI rebuild
+
+* Sat Mar 22 2014 Xavier Bachelot <xavier@bachelot.org> - 0.3.3-9
+- Change URL: to fd.o.
+
+* Mon Jan 13 2014 Adam Jackson <ajax@redhat.com> - 0.3.3-8
+- 1.15 ABI rebuild
+
+* Sat Dec 21 2013 Ville Skyttä <ville.skytta@iki.fi> - 0.3.3-7
+- Call ldconfig in %%post* scriptlets.
+- Fix bogus dates in %%changelog.
+
+* Tue Dec 17 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-6
+- 1.15RC4 ABI rebuild
+
+* Wed Nov 20 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-5
+- 1.15RC2 ABI rebuild
 
 * Wed Nov 06 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-4
 - 1.15RC1 ABI rebuild
@@ -175,7 +227,7 @@ fi
 * Fri Jul 20 2012 Dave Airlie <airlied@redhat.com> 0.2.906-2
 - temporary git snapshot, to fix deps after X server rebuild
 
-* Wed May 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.906-1
+* Wed May 16 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.906-1
 - Update to 0.2.906.
 
 * Thu May 03 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-6
@@ -184,7 +236,7 @@ fi
 * Mon Mar 26 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-5
 - Make EXA work out of the box.
 
-* Fri Mar 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-4
+* Thu Mar 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-4
 - Make EXA the default (but disable compositing) (RHBZ#804194).
 - Xv support for VX900.
 
@@ -216,10 +268,10 @@ fi
 * Thu Aug 18 2011 Adam Jackson <ajax@redhat.com> - 0.2.904-15
 - Rebuild for xserver 1.11 ABI
 
-* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-14
+* Sat May 07 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-14
 - Bump release.
 
-* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-13
+* Sat May 07 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-13
 - Update to svn921 for XO 1.5 regression and Xv crash fix (RHBZ #697901).
 - Update I420 patch (RHBZ #674551).
 
@@ -286,7 +338,7 @@ fi
 * Mon Jul 27 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.2.903-13
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
 
-* Mon Jul 18 2009 Xavier Bachelot <xavier@bachelot.org> - 0.2.903-12
+* Sat Jul 18 2009 Xavier Bachelot <xavier@bachelot.org> - 0.2.903-12
 - Update to latest snapshot (svn 758) :
   - Basic VX855 support.
   - Fix pci space corruption on P4M900 (RHBZ#506622).
@@ -362,7 +414,7 @@ fi
 * Sat May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-7
 - New panel and hardware cursor code from randr branch.
 
-* Sun May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-6
+* Sat May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-6
 - Disable XvDMA for K8M890 and P4M890 (RHBZ #391621).
 
 * Mon May 26 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-5
@@ -418,7 +470,7 @@ fi
 * Wed Jan 23 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-6
 - Add patch to properly set fifo on P4M900.
 
-* Fri Jan 19 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-5
+* Sat Jan 19 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-5
 - Add patch to replace xf86memcpy by plain memcpy.
 
 * Thu Jan 10 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-4
@@ -435,7 +487,7 @@ fi
 - Remove obsoleted patches.
 - Update libpciaccess patch.
 
-* Fri Dec 08 2007 Xavier Bachelot <xavier@bachelot.org> - 0.2.900-9
+* Sat Dec 08 2007 Xavier Bachelot <xavier@bachelot.org> - 0.2.900-9
 - Add patch for preliminary libpciaccess support.
 
 * Wed Nov 28 2007 Adam Jackson <ajax@redhat.com> 0.2.900-8
