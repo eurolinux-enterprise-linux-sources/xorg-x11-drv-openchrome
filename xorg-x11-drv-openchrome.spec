@@ -1,7 +1,7 @@
 %define tarball xf86-video-openchrome
 %define moduledir %(pkg-config xorg-server --variable=moduledir )
 %define driverdir %{moduledir}/drivers
-#define gitdate 
+%define gitdate 
 %define gitversion 131175a71
 
 %if 0%{?gitdate}
@@ -14,8 +14,8 @@
 Summary:        Xorg X11 openchrome video driver
 Name:           xorg-x11-drv-openchrome
 Version:        0.3.3
-Release:        14%{?gver}%{?dist}
-URL:            http://www.freedesktop.org/wiki/Openchrome/
+Release:        4%{?gver}%{?dist}
+URL:            http://www.openchrome.org
 License:        MIT
 Group:          User Interface/X Hardware Support
 
@@ -28,7 +28,6 @@ Source0:        http://xorg.freedesktop.org/archive/individual/driver/%{tarball}
 # Upstream patches :
 
 # Fedora specific patches :
-Patch0:         xf86-video-openchrome-0.3.3-build-fix.patch
 
 # Experimental patches (branch backport, etc...): 
 Patch13:        openchrome-0.2.904-fix_tvout_flickering.patch
@@ -72,7 +71,6 @@ X.Org X11 openchrome video driver XvMC development package.
 
 %prep
 %setup -q -n %{tarball}-%{?gitdate:%{gitdate}}%{?!gitdate:%{version}}
-%patch0 -p1
 
 
 %build
@@ -102,16 +100,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %post
-%if %{with_xvmc}
-/sbin/ldconfig
-%endif
 if [ -e /etc/X11/xorg.conf ]; then
     sed -i "/Driver/s/via/openchrome/" /etc/X11/xorg.conf || :
 fi
-
-%if %{with_xvmc}
-%postun -p /sbin/ldconfig
-%endif
 
 
 %files
@@ -136,37 +127,6 @@ fi
 
 
 %changelog
-* Wed Feb 11 2015 Hans de Goede <hdegoede@redhat.com> - 0.3.3-14
-- xserver 1.17 ABI rebuild
-
-* Mon Aug 18 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-13
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
-
-* Mon Jun 16 2014 Hans de Goede <hdegoede@redhat.com> - 0.3.3-12
-- xserver 1.15.99.903 ABI rebuild
-
-* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.3-11
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
-
-* Mon Apr 28 2014 Hans de Goede <hdegoede@redhat.com> - 0.3.3-10
-- xserver 1.15.99-20140428 git snapshot ABI rebuild
-
-* Sat Mar 22 2014 Xavier Bachelot <xavier@bachelot.org> - 0.3.3-9
-- Change URL: to fd.o.
-
-* Mon Jan 13 2014 Adam Jackson <ajax@redhat.com> - 0.3.3-8
-- 1.15 ABI rebuild
-
-* Sat Dec 21 2013 Ville Skyttä <ville.skytta@iki.fi> - 0.3.3-7
-- Call ldconfig in %%post* scriptlets.
-- Fix bogus dates in %%changelog.
-
-* Tue Dec 17 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-6
-- 1.15RC4 ABI rebuild
-
-* Wed Nov 20 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-5
-- 1.15RC2 ABI rebuild
-
 * Wed Nov 06 2013 Adam Jackson <ajax@redhat.com> - 0.3.3-4
 - 1.15RC1 ABI rebuild
 
@@ -209,7 +169,7 @@ fi
 * Fri Jul 20 2012 Dave Airlie <airlied@redhat.com> 0.2.906-2
 - temporary git snapshot, to fix deps after X server rebuild
 
-* Wed May 16 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.906-1
+* Wed May 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.906-1
 - Update to 0.2.906.
 
 * Thu May 03 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-6
@@ -218,7 +178,7 @@ fi
 * Mon Mar 26 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-5
 - Make EXA work out of the box.
 
-* Thu Mar 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-4
+* Fri Mar 15 2012 Xavier Bachelot <xavier@bachelot.org> - 0.2.905-4
 - Make EXA the default (but disable compositing) (RHBZ#804194).
 - Xv support for VX900.
 
@@ -250,10 +210,10 @@ fi
 * Thu Aug 18 2011 Adam Jackson <ajax@redhat.com> - 0.2.904-15
 - Rebuild for xserver 1.11 ABI
 
-* Sat May 07 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-14
+* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-14
 - Bump release.
 
-* Sat May 07 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-13
+* Sat May 06 2011 Xavier Bachelot <xavier@bachelot.org> - 0.2.904-13
 - Update to svn921 for XO 1.5 regression and Xv crash fix (RHBZ #697901).
 - Update I420 patch (RHBZ #674551).
 
@@ -320,7 +280,7 @@ fi
 * Mon Jul 27 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.2.903-13
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
 
-* Sat Jul 18 2009 Xavier Bachelot <xavier@bachelot.org> - 0.2.903-12
+* Mon Jul 18 2009 Xavier Bachelot <xavier@bachelot.org> - 0.2.903-12
 - Update to latest snapshot (svn 758) :
   - Basic VX855 support.
   - Fix pci space corruption on P4M900 (RHBZ#506622).
@@ -396,7 +356,7 @@ fi
 * Sat May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-7
 - New panel and hardware cursor code from randr branch.
 
-* Sat May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-6
+* Sun May 31 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-6
 - Disable XvDMA for K8M890 and P4M890 (RHBZ #391621).
 
 * Mon May 26 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.902-5
@@ -452,7 +412,7 @@ fi
 * Wed Jan 23 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-6
 - Add patch to properly set fifo on P4M900.
 
-* Sat Jan 19 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-5
+* Fri Jan 19 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-5
 - Add patch to replace xf86memcpy by plain memcpy.
 
 * Thu Jan 10 2008 Xavier Bachelot <xavier@bachelot.org> - 0.2.901-4
@@ -469,7 +429,7 @@ fi
 - Remove obsoleted patches.
 - Update libpciaccess patch.
 
-* Sat Dec 08 2007 Xavier Bachelot <xavier@bachelot.org> - 0.2.900-9
+* Fri Dec 08 2007 Xavier Bachelot <xavier@bachelot.org> - 0.2.900-9
 - Add patch for preliminary libpciaccess support.
 
 * Wed Nov 28 2007 Adam Jackson <ajax@redhat.com> 0.2.900-8
