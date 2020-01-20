@@ -16,7 +16,7 @@
 Summary:        Xorg X11 openchrome video driver
 Name:           xorg-x11-drv-openchrome
 Version:        0.5.0
-Release:        3%{?gver}%{?dist}.1
+Release:        3%{?gver}%{?dist}
 URL:            http://www.freedesktop.org/wiki/Openchrome/
 License:        MIT
 Group:          User Interface/X Hardware Support
@@ -129,9 +129,6 @@ fi
 
 
 %changelog
-* Wed May 30 2018 Adam Jackson <ajax@redhat.com> - 0.5.0-3.1
-- Rebuild for xserver 1.20
-
 * Thu Sep 29 2016 Hans de Goede <hdegoede@redhat.com> - 0.5.0-3
 - Rebuild against xserver-1.19
 
